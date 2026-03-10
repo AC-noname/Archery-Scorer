@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Archery Scorer",
+    "slug": "archery-scorer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.annacui.archeryscorer",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f7f7f7"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f8a67f8c-f579-442f-b8fd-32bfe9579168"
+      }
+    }
+  }
+}
