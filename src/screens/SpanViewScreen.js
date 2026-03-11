@@ -6,6 +6,10 @@ import { COLORS } from "../constants";
 import { sv } from "../utils/helpers";
 import { Card } from "../components/UI";
 import TargetFace from "../components/TargetFace";
+import { Dimensions } from "react-native";
+const PILL_W = Math.floor((Dimensions.get("window").width - 36) / 7) - 5;
+const PILL_H = 36;
+const PILL_GAP = 4;
 
 export default function SpanViewScreen({ session, onBack }) {
   const s = session;
@@ -118,7 +122,7 @@ function EndPill({ label, active, disabled, onPress, tall, isW }) {
       activeOpacity={0.7}
       style={[
         styles.pill,
-        tall && { height: isW ? 72 : 34, justifyContent: "center" },
+        tall && { width: PILL_W, height: isW ? 72 : 34, justifyContent: "center" },
         active ? styles.pillActive : disabled ? styles.pillDisabled : styles.pillIdle,
       ]}
     >
@@ -137,14 +141,14 @@ const styles = StyleSheet.create({
   title: { fontSize: 15, fontWeight: "700", color: COLORS.text },
   content: { paddingHorizontal: 18, paddingBottom: 60 },
 
-  endPills: { flexDirection: "row", gap: 6, marginBottom: 14 },
+  endPills: { flexDirection: "row", flexWrap: "wrap", marginBottom: 14, gap: PILL_GAP },
   endPillsLeft: { justifyContent: "center" },
-  endPillsRight: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  pill: { borderRadius: 10, paddingVertical: 8, width: 44, alignItems: "center" },
+  endPillsRight: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "flex-start" },
+  pill: { borderRadius: 10, paddingVertical: 0, width: PILL_W, height: PILL_H, alignItems: "center", justifyContent: "center" },
   pillActive: { backgroundColor: COLORS.accent, shadowColor: COLORS.accent, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.22, shadowRadius: 5, elevation: 3 },
   pillIdle: { backgroundColor: "#fff", borderWidth: 1.5, borderColor: COLORS.border },
   pillDisabled: { backgroundColor: "#f7f7f7", borderWidth: 1.5, borderColor: "#f0f0f0" },
-  pillText: { fontSize: 12, fontWeight: "700" },
+  pillText: { fontSize: 11, fontWeight: "700" },
   pillTextActive: { color: "#fff" },
   pillTextIdle: { color: COLORS.text },
   pillTextDisabled: { color: "#ccc" },

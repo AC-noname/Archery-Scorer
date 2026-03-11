@@ -8,14 +8,12 @@ import { Sec, Card } from "../components/UI";
 import SessionRow from "../components/SessionRow";
 import LineChart from "../components/LineChart";
 import SessionDetailScreen from "./SessionDetailScreen";
+import DistanceHistoryScreen from "./DistanceHistoryScreen";
 
 export default function ProgressScreen({ sessions, onBack, onDelete }) {
   const [chartTab, setChartTab] = useState(null);
   const [detailSession, setDetailSession] = useState(null);
-
-  if (detailSession) {
-    return <SessionDetailScreen session={detailSession} onBack={() => setDetailSession(null)} />;
-  }
+  const [distanceHistory, setDistanceHistory] = useState(null);
 
   // Build flat entries including W sub-rounds
   const allEntries = [];
@@ -29,6 +27,22 @@ export default function ProgressScreen({ sessions, onBack, onDelete }) {
       allEntries.push({ ...s, distance: d2, total: r2, endsCount: 6, fromW: s.distance });
     }
   });
+
+  if (detailSession) {
+    return <SessionDetailScreen session={detailSession} onBack={() => setDetailSession(null)} />;
+  }
+
+  if (distanceHistory) {
+    return (
+      <DistanceHistoryScreen
+        distance={distanceHistory}
+        sessions={sessions}
+        allEntries={allEntries}
+        onBack={() => setDistanceHistory(null)}
+        onDelete={onDelete}
+      />
+    );
+  }
 
   const distKeys = [...new Set(allEntries.map(e => e.distance))];
 
@@ -74,7 +88,7 @@ export default function ProgressScreen({ sessions, onBack, onDelete }) {
                 return (
                   <TouchableOpacity
                     key={item.distance}
-                    onPress={() => src && openSession(src)}
+                    onPress={() => setDistanceHistory(item.distance)}
                     activeOpacity={0.7}
                     style={styles.trophyCard}
                   >

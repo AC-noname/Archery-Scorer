@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   gridItem: { width: "47.5%" },
   distCard: { backgroundColor: "#fff", borderRadius: 16, padding: 18, borderWidth: 1.5, borderColor: COLORS.border },
   distCardActive: { backgroundColor: COLORS.accent, borderColor: COLORS.accent, shadowColor: COLORS.accent, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 4 },
-  distLabel:       { fontSize: 26, fontWeight: "900", letterSpacing: -1, color: COLORS.text },
+  distLabel:       { fontSize: 22, fontWeight: "900", letterSpacing: -1, color: COLORS.text },
   distLabelActive: { color: "#fff" },
   distSub:         { fontSize: 11, marginTop: 4, color: COLORS.muted },
   distSubActive:   { color: "rgba(255,255,255,0.7)" },
