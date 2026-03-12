@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import * as Haptics from "expo-haptics";
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
 } from "react-native";
@@ -7,8 +8,8 @@ import { sv } from "../utils/helpers";
 import { Sec, Card } from "../components/UI";
 import SessionRow from "../components/SessionRow";
 import LineChart from "../components/LineChart";
-import SessionDetailScreen from "./SessionDetailScreen";
 import DistanceHistoryScreen from "./DistanceHistoryScreen";
+import SessionScreen from "./SessionScreen";
 
 export default function ProgressScreen({ sessions, onBack, onDelete }) {
   const [chartTab, setChartTab] = useState(null);
@@ -29,7 +30,8 @@ export default function ProgressScreen({ sessions, onBack, onDelete }) {
   });
 
   if (detailSession) {
-    return <SessionDetailScreen session={detailSession} onBack={() => setDetailSession(null)} />;
+    const distPB = Math.max(...sessions.filter(x => x.distance === detailSession.distance).map(x => x.total));
+    return <SessionScreen session={detailSession} isPB={detailSession.total === distPB} onBack={() => setDetailSession(null)} />;
   }
 
   if (distanceHistory) {
@@ -51,10 +53,14 @@ export default function ProgressScreen({ sessions, onBack, onDelete }) {
     const pb = Math.max(...entries.map(e => e.total));
     const pbEntry = entries.find(e => e.total === pb);
     return { distance: d, pb, count: entries.length, date: pbEntry?.date };
-  }).sort((a, b) => b.pb - a.pb);
+  }).sort((a, b) => {
+    const maxA = allEntries.find(e => e.distance === a.distance)?.endsCount === 12 ? 720 : 360;
+    const maxB = allEntries.find(e => e.distance === b.distance)?.endsCount === 12 ? 720 : 360;
+    return (b.pb / maxB) - (a.pb / maxA);
+  });
 
   const activeTab = chartTab || distKeys[0] || null;
-  const tabEntries = allEntries.filter(e => e.distance === activeTab).slice(-12);
+  const tabEntries = allEntries.filter(e => e.distance === activeTab);
   const tabPB = tabEntries.length ? Math.max(...tabEntries.map(e => e.total)) : 0;
   const chrono = [...sessions].reverse();
 
@@ -68,7 +74,7 @@ export default function ProgressScreen({ sessions, onBack, onDelete }) {
           <Text style={styles.headerLabel}>Progress</Text>
           <Text style={styles.headerTitle}>{sessions.length} Sessions</Text>
         </View>
-        <TouchableOpacity onPress={onBack}>
+        <TouchableOpacity onPress={() => { Haptics.selectionAsync(); onBack()}}>
           <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
       </View>
@@ -88,7 +94,7 @@ export default function ProgressScreen({ sessions, onBack, onDelete }) {
                 return (
                   <TouchableOpacity
                     key={item.distance}
-                    onPress={() => setDistanceHistory(item.distance)}
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setDistanceHistory(item.distance); }}
                     activeOpacity={0.7}
                     style={styles.trophyCard}
                   >
@@ -129,8 +135,10 @@ export default function ProgressScreen({ sessions, onBack, onDelete }) {
           <Sec label="Session history">
             {chrono.map((s, i) => {
               const realIndex = sessions.length - 1 - i;
+              const distPB = Math.max(...sessions.filter(x => x.distance === s.distance).map(x => x.total));
+              const isPB = s.total === distPB;
               return (
-                <SessionRow key={i} session={s} onPress={() => openSession(s)} onDelete={() => onDelete(realIndex)} />
+                <SessionRow key={i} session={s} onPress={() => openSession(s)} onDelete={() => onDelete(realIndex)} isPB={isPB} />
               );
             })}
           </Sec>
@@ -145,7 +153,7 @@ export default function ProgressScreen({ sessions, onBack, onDelete }) {
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: COLORS.bg },
   content: { paddingBottom: 60 },
-  header: { paddingTop: 56, paddingHorizontal: 18, paddingBottom: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  header: { paddingTop: 35, paddingHorizontal: 18, paddingBottom: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   headerLabel: { fontSize: 11, fontWeight: "700", color: COLORS.accent, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 4 },
   headerTitle: { fontSize: 28, fontWeight: "900", color: COLORS.text, letterSpacing: -1 },
   back: { fontSize: 14, color: COLORS.muted, paddingTop: 6 },
@@ -158,7 +166,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: COLORS.border,
     padding: 12,
   },
-  trophyBadge: { fontSize: 9, fontWeight: "700", color: "#f0b400", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 },
+  trophyBadge: { fontSize: 9, fontWeight: "700", color: "#f0b400", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, backgroundColor: "#fff8e0", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, alignSelf: "flex-start" },
   trophyScore: { fontSize: 22, fontWeight: "900", color: COLORS.text, letterSpacing: -1 },
   trophyDist: { fontSize: 13, fontWeight: "700", color: COLORS.accent, marginTop: 2 },
   trophyDate: { fontSize: 9, color: "#ccc", marginTop: 5 },

@@ -6,6 +6,7 @@ import { SCORE_BUTTONS, ARROWS_PER_END, ZONE, COLORS, TARGET_RINGS } from "../co
 import { sv } from "../utils/helpers";
 import { xyToScore } from "../utils/helpers";
 import TargetFace from "../components/TargetFace";
+import * as Haptics from "expo-haptics";
 import Svg, { Circle, Line, Text as SvgText, G } from "react-native-svg";
 
 function SpanTarget({ arrows, onPlace, onUndo, maxArrows, onPressIn, onPressOut }) {
@@ -14,7 +15,7 @@ function SpanTarget({ arrows, onPlace, onUndo, maxArrows, onPressIn, onPressOut 
   const holdTimer = useRef(null);
   const lastPos = useRef(null);
   const SIZE = 300;
-  const LOUPE = 110;
+  const LOUPE = 150;
   const ZOOM = 2.8;
   const cx = SIZE / 2, cy = SIZE / 2, maxR = SIZE / 2 - 2;
   const canPlace = arrows.length < maxArrows;
@@ -194,6 +195,7 @@ export default function RecordingScreen({ distance, endsCount, sessionMode, onFi
 
   function addScore(score) {
     if (curEndArrows.length >= ARROWS_PER_END) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const newEnds = ends.map((e, i) => i === curEnd ? [...e, score] : e);
     setEnds(newEnds);
     if (curEndArrows.length + 1 >= ARROWS_PER_END) {
@@ -208,6 +210,7 @@ export default function RecordingScreen({ distance, endsCount, sessionMode, onFi
 
   function tapTarget(x, y) {
     if (curEndSpan.length >= ARROWS_PER_END) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const score = xyToScore(x, y);
     const newSpan = spanData.map((s, i) => i === curEnd ? [...s, { x, y, score }] : s);
     const newEnds = ends.map((e, i) => i === curEnd ? [...e, score] : e);
@@ -261,8 +264,8 @@ export default function RecordingScreen({ distance, endsCount, sessionMode, onFi
     <View style={styles.screen}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={onHome} >
-          <Text style={styles.backBtn}>← Home</Text>
+        <TouchableOpacity onPress={() => { Haptics.selectionAsync(); onHome(); }}>
+          <Text style={styles.backBtn}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.topDist}>{distance}</Text>
         <Text style={styles.topMeta}>
@@ -387,7 +390,7 @@ export default function RecordingScreen({ distance, endsCount, sessionMode, onFi
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.bg },
-  topBar: { paddingTop: 56, paddingHorizontal: 18, paddingBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  topBar: { paddingTop: 35, paddingHorizontal: 18, paddingBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backBtn: { fontSize: 14, color: COLORS.muted },
   topDist: { fontSize: 18, fontWeight: "900", color: COLORS.text, letterSpacing: -0.5 },
   topMeta: { fontSize: 12, color: COLORS.muted },

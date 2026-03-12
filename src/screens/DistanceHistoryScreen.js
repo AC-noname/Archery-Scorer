@@ -5,24 +5,29 @@ import {
 import { COLORS, W_ROUNDS } from "../constants";
 import { sv } from "../utils/helpers";
 import { Sec, Card } from "../components/UI";
-import SessionRow from "../components/SessionRow";
 import LineChart from "../components/LineChart";
-import SessionDetailScreen from "./SessionDetailScreen";
+import SessionScreen from "./SessionScreen";
+import * as Haptics from "expo-haptics";
 
 export default function DistanceHistoryScreen({ distance, sessions, allEntries, onBack, onDelete }) {
   const [detailSession, setDetailSession] = useState(null);
 
   if (detailSession) {
-    return <SessionDetailScreen session={detailSession} onBack={() => setDetailSession(null)} />;
+    const distPB = Math.max(...sessions.filter(x => x.distance === detailSession.distance).map(x => x.total));
+    return <SessionScreen session={detailSession} isPB={detailSession.total === distPB} onBack={() => setDetailSession(null)} />;
   }
 
-  // Filter entries for this distance, sorted by score descending
+  const count10X = (entry) =>
+    (entry.ends?.flat() || []).filter(v => v === 10 || v === "X").length;
+
   const distEntries = (allEntries || [])
     .filter(e => e.distance === distance)
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => {
+      if (b.total !== a.total) return b.total - a.total;
+      return count10X(b) - count10X(a);
+    });
 
-  const top3Scores = [...new Set(distEntries.map(e => e.total))].slice(0, 3);
-  const getRank = (total) => top3Scores.indexOf(total); // 0=gold, 1=silver, 2=bronze, -1=none
+  const getRank = (_, index) => index < 3 ? index : -1;
   const MEDALS = ["🥇", "🥈", "🥉"];
   const MEDAL_COLORS = ["#f0b400", "#a0a0a0", "#cd7f32"];
 
@@ -32,7 +37,6 @@ export default function DistanceHistoryScreen({ distance, sessions, allEntries, 
     : 0;
   const max = distEntries[0]?.endsCount === 12 ? 720 : 360;
 
-  // For chart — chronological order
   const chartEntries = (allEntries || [])
     .filter(e => e.distance === distance)
     .sort((a, b) => {
@@ -41,7 +45,6 @@ export default function DistanceHistoryScreen({ distance, sessions, allEntries, 
       return da - db;
     });
 
-  // Find the real session object for a sub-round entry
   const getRealSession = (entry) => {
     if (entry.fromW) {
       return sessions.find(s =>
@@ -61,7 +64,7 @@ export default function DistanceHistoryScreen({ distance, sessions, allEntries, 
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}>
+        <TouchableOpacity onPress={() => { Haptics.selectionAsync(); onBack() }}>
           <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
         <View style={styles.titleBlock}>
@@ -95,48 +98,45 @@ export default function DistanceHistoryScreen({ distance, sessions, allEntries, 
 
       {/* Session list */}
       <Sec label="All sessions">
-        {distEntries.map((entry, i) => {
-          const realSession = getRealSession(entry);
-          if (!realSession) return null;
+        <View style={styles.listCard}>
+          {distEntries.map((entry, i) => {
+            const realSession = getRealSession(entry);
+            if (!realSession) return null;
+            const rank = getRank(entry, i);
+            const isLast = i === distEntries.length - 1;
 
-          // If it's a W sub-round, show it differently
-          const isSubRound = !!entry.fromW && entry.fromW !== distance;
-          const roundNum = isSubRound
-            ? W_ROUNDS[entry.fromW]?.[0] === entry.distance ? "Round 1" : "Round 2"
-            : null;
+            return (
+              <TouchableOpacity
+                key={i}
+                onPress={() => setDetailSession(realSession)}
+                activeOpacity={0.6}
+                style={[styles.listRow, !isLast && styles.listRowBorder]}
+              >
+                {/* Rank number */}
+                <Text style={styles.rankNum}>#{i + 1}</Text>
 
-          return (
-            <TouchableOpacity
-              key={i}
-              onPress={() => setDetailSession(realSession)}
-              activeOpacity={0.7}
-              style={styles.entryRow}
-            >
-              <View style={styles.entryLeft}>
-                <View style={styles.entryTitleRow}>
-                  <Text style={styles.entryDist}>{distance}</Text>
-                  {getRank(entry.total) >= 0 && (
-                    <View style={[styles.medalBadge, { backgroundColor: MEDAL_COLORS[getRank(entry.total)] + "22", borderColor: MEDAL_COLORS[getRank(entry.total)] + "44" }]}>
-                      <Text style={[styles.medalText, { color: MEDAL_COLORS[getRank(entry.total)] }]}>
-                        {MEDALS[getRank(entry.total)]} {getRank(entry.total) === 0 ? "Best" : getRank(entry.total) === 1 ? "2nd" : "3rd"}
-                      </Text>
-                    </View>
-                  )}
+                {/* Middle info */}
+                <View style={styles.listMiddle}>
+                  <View style={styles.listTitleRow}>
+                    <Text style={styles.listDate}>{entry.date}</Text>
+                  </View>
+                  <Text style={styles.listLocation}>
+                    {entry.time}{entry.location ? `  ${entry.location}` : ""}
+                  </Text>
                 </View>
-                <Text style={styles.entryMeta}>
-                  {entry.date} · {entry.time}
-                  {entry.location ? `  📍 ${entry.location}` : ""}
-                </Text>
-              </View>
-              <View style={styles.entryRight}>
-                <Text style={[styles.entryScore, entry.total === pb && styles.entryScorePB]}>
-                  {entry.total}
-                </Text>
+
+                {/* Score + medal */}
+                <View style={styles.scoreBlock}>
+                  {rank >= 0 && <Text style={styles.medalRight}>{MEDALS[rank]}</Text>}
+                  <Text style={[styles.listScore, rank === 0 && styles.listScoreGold, rank === 1 && styles.listScoreSilver, rank === 2 && styles.listScoreBronze]}>
+                    {entry.total}
+                  </Text>
+                </View>
                 <Text style={styles.chevron}>›</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </Sec>
 
       <View style={{ height: 40 }} />
@@ -147,7 +147,7 @@ export default function DistanceHistoryScreen({ distance, sessions, allEntries, 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: COLORS.bg },
   content: { paddingBottom: 60 },
-  header: { paddingTop: 56, paddingHorizontal: 18, paddingBottom: 16, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
+  header: { paddingTop: 35, paddingHorizontal: 18, paddingBottom: 16, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
   back: { fontSize: 14, color: COLORS.muted, paddingTop: 4 },
   titleBlock: { alignItems: "center" },
   title: { fontSize: 28, fontWeight: "900", color: COLORS.text, letterSpacing: -1 },
@@ -160,23 +160,20 @@ const styles = StyleSheet.create({
   statValPB: { color: COLORS.accent },
   statLabel: { fontSize: 10, color: COLORS.muted, marginTop: 2, textAlign: "center" },
 
-  entryRow: {
-    backgroundColor: "#fff", borderRadius: 14,
-    borderWidth: 1.5, borderColor: COLORS.border,
-    paddingVertical: 10, paddingHorizontal: 14,
-    marginBottom: 6,
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-  },
-  entryLeft: { flex: 1 },
-  entryTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  entryDist: { fontSize: 14, fontWeight: "700", color: COLORS.text },
-  pbBadge: { backgroundColor: "#fff8e0", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  pbBadgeText: { fontSize: 10, color: "#f0b400", fontWeight: "700" },
-  entryMeta: { fontSize: 11, color: COLORS.muted, marginTop: 3 },
-  entryRight: { flexDirection: "row", alignItems: "center", gap: 4, marginLeft: 10 },
-  entryScore:    { fontSize: 20, fontWeight: "900", color: COLORS.text, letterSpacing: -0.5 },
-  entryScorePB:  { color: "#f0b400" },
-  medalBadge:    { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1 },
-  medalText:     { fontSize: 10, fontWeight: "700" },
+  listCard: { backgroundColor: "#fff", borderRadius: 14, borderWidth: 1.5, borderColor: COLORS.border, overflow: "hidden" },
+  listRow: { flexDirection: "row", alignItems: "center", paddingVertical: 18, paddingHorizontal: 14, gap: 10 },
+  listRowBorder: { borderBottomWidth: 1, borderBottomColor: "#f2f2f2" },
+  rankNum: { width: 28, fontSize: 15, fontWeight: "700", color: "#ccc", textAlign: "center" },
+  listMiddle: { flex: 1 },
+  listTitleRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  medal: { fontSize: 13 },
+  listDate: { fontSize: 13, fontWeight: "600", color: COLORS.text },
+  listLocation: { fontSize: 11, color: COLORS.muted, marginTop: 2 },
+  scoreBlock: { flexDirection: "row", alignItems: "center", gap: 4 },
+  medalRight: { fontSize: 16 },
+  listScore: { fontSize: 22, fontWeight: "900", color: COLORS.text, letterSpacing: -0.5 },
+  listScoreGold: { color: "#f0b400" },
+  listScoreSilver: { color: "#a0a0a0" },
+  listScoreBronze: { color: "#cd7f32" },
   chevron: { fontSize: 14, color: COLORS.muted },
 });

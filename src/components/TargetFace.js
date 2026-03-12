@@ -3,13 +3,14 @@ import { View, StyleSheet } from "react-native";
 import Svg, { Circle, Line, Text as SvgText, G } from "react-native-svg";
 import { TARGET_RINGS, ARROWS_PER_END } from "../constants";
 
-export default function TargetFace({
+export default React.memo(function TargetFace({
   arrows = [],
   onTap,
   size = 300,
   maxArrows = ARROWS_PER_END,
   r1Count = 0,
   showRoundColors = false,
+  showGrouping = false,
 }) {
   const cx = size / 2;
   const cy = size / 2;
@@ -29,7 +30,6 @@ export default function TargetFace({
       <Svg
         width={size}
         height={size}
-        onPress={handlePress}
         style={{ borderRadius: size / 2 }}
       >
         {TARGET_RINGS.map((ring, i) => (
@@ -45,6 +45,28 @@ export default function TargetFace({
         <Line x1={cx - 9} y1={cy} x2={cx + 9} y2={cy} stroke="rgba(0,0,0,0.10)" strokeWidth="0.8" />
         <Line x1={cx} y1={cy - 9} x2={cx} y2={cy + 9} stroke="rgba(0,0,0,0.10)" strokeWidth="0.8" />
 
+        {showGrouping && arrows.length >= 2 && (() => {
+          const gcx = arrows.reduce((s, a) => s + a.x, 0) / arrows.length;
+          const gcy = arrows.reduce((s, a) => s + a.y, 0) / arrows.length;
+          const avgDist = arrows.reduce((s, a) => s + Math.sqrt((a.x - gcx) ** 2 + (a.y - gcy) ** 2), 0) / arrows.length;
+          const px = cx + gcx * maxR;
+          const py = cy + gcy * maxR;
+          const pr = avgDist * maxR;
+          const maxDist = Math.max(...arrows.map(a => Math.sqrt((a.x - gcx) ** 2 + (a.y - gcy) ** 2)));
+          const pmaxR = maxDist * maxR;
+          const color = "rgba(255,255,255,0.7)";
+          return (
+            <G>
+              {/* Max range circle - dashed */}
+              <Circle cx={px} cy={py} r={pmaxR} fill="none" stroke={color} strokeWidth="1.5" strokeDasharray="7,8" />
+              {/* Avg grouping circle - solid */}
+              <Circle cx={px} cy={py} r={pr} fill="none" stroke={color} strokeWidth="1.5" />
+              {/* Cross extending to outer (max) circle */}
+              <Line x1={px - pmaxR} y1={py} x2={px + pmaxR} y2={py} stroke={color} strokeWidth="1.5" />
+              <Line x1={px} y1={py - pmaxR} x2={px} y2={py + pmaxR} stroke={color} strokeWidth="1.5" />
+            </G>
+          );
+        })()}
         {arrows.map((a, i) => {
           const ax = cx + a.x * maxR;
           const ay = cy + a.y * maxR;
@@ -69,7 +91,7 @@ export default function TargetFace({
       </Svg>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrap: {

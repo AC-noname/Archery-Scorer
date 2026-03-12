@@ -2,22 +2,21 @@ import React, { useState, useEffect } from "react";
 import { View, ActivityIndicator, StyleSheet, StatusBar } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-import { loadSessions, saveSessions, loadLocation, saveLocation } from "./src/utils/storage";
+import { loadSessions, saveSessions, loadLocation, saveLocation, loadName, saveName } from "./src/utils/storage";
 import { formatDate, formatTime, sv } from "./src/utils/helpers";
 import { COLORS } from "./src/constants";
 
 import HomeScreen from "./src/screens/HomeScreen";
 import RecordingScreen from "./src/screens/RecordingScreen";
-import ResultsScreen from "./src/screens/ResultsScreen";
-import SpanViewScreen from "./src/screens/SpanViewScreen";
 import ProgressScreen from "./src/screens/ProgressScreen";
-import SessionDetailScreen from "./src/screens/SessionDetailScreen";
+import SessionScreen from "./src/screens/SessionScreen";
 
 export default function App() {
   const [ready, setReady] = useState(false);
-  const [screen, setScreen] = useState("home");   // home | recording | results | spanview | progress | sessiondetail
+  const [screen, setScreen] = useState("home");   // home | recording | results | progress | sessiondetail
   const [sessions, setSessions] = useState([]);
   const [location, setLocationState] = useState("");
+  const [archerName, setArcherName] = useState("Archer");
 
   // Active session params
   const [activeSession, setActiveSession] = useState(null);  // { distance, endsCount, sessionMode }
@@ -27,9 +26,10 @@ export default function App() {
   // Load persisted data on launch
   useEffect(() => {
     (async () => {
-      const [savedSessions, savedLocation] = await Promise.all([loadSessions(), loadLocation()]);
+      const [savedSessions, savedLocation, savedName] = await Promise.all([loadSessions(), loadLocation(), loadName()]);
       setSessions(savedSessions);
       setLocationState(savedLocation);
+      if (savedName) setArcherName(savedName);
       setReady(true);
     })();
   }, []);
@@ -52,6 +52,8 @@ export default function App() {
   const handleFinish = (finalEnds, finalSpan) => {
     const total = finalEnds.flat().reduce((s, a) => s + sv(a), 0);
     const now = new Date();
+    const distPB = Math.max(0, ...sessions.filter(s => s.distance === activeSession.distance).map(s => s.total));
+    const isPB = total > distPB;
     const sess = {
       distance: activeSession.distance,
       endsCount: activeSession.endsCount,
@@ -63,7 +65,7 @@ export default function App() {
       time: formatTime(now),
     };
     setSessions(prev => [...prev, sess]);
-    setLastSession(sess);
+    setLastSession({ ...sess, isPB });
     setScreen("results");
   };
 
@@ -84,7 +86,8 @@ export default function App() {
   };
 
   const handleOpenSession = (s) => {
-    setDetailSession(s);
+    const distPB = Math.max(...sessions.filter(x => x.distance === s.distance).map(x => x.total));
+    setDetailSession({ ...s, isPB: s.total === distPB });
     setScreen("sessiondetail");
   };
 
@@ -109,6 +112,8 @@ export default function App() {
             onOpenSession={handleOpenSession}
             onProgress={() => setScreen("progress")}
             onDeleteSession={handleDeleteSession}
+            archerName={archerName}
+            onSetName={(n) => { setArcherName(n); saveName(n); }}
           />
         )}
 
@@ -123,18 +128,12 @@ export default function App() {
         )}
 
         {screen === "results" && lastSession && (
-          <ResultsScreen
+          <SessionScreen
             session={lastSession}
-            onHome={() => setScreen("home")}
-            onViewSpan={() => { setDetailSession(lastSession); setScreen("spanview"); }}
+            isNew={true}
+            isPB={lastSession.isPB}
+            onBack={() => setScreen("home")}
             onUpdateLocation={handleUpdateResultLocation}
-          />
-        )}
-
-        {screen === "spanview" && detailSession && (
-          <SpanViewScreen
-            session={detailSession}
-            onBack={() => setScreen("results")}
           />
         )}
 
@@ -147,9 +146,11 @@ export default function App() {
         )}
 
         {screen === "sessiondetail" && detailSession && (
-          <SessionDetailScreen
+          <SessionScreen
             session={detailSession}
-            onBack={() => setScreen(screen === "sessiondetail" ? "home" : "progress")}
+            isNew={false}
+            isPB={detailSession.isPB}
+            onBack={() => setScreen("home")}
           />
         )}
       </SafeAreaView>

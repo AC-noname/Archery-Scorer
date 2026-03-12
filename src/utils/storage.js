@@ -31,3 +31,6 @@ export async function saveLocation(loc) {
     await AsyncStorage.setItem(LOCATION_KEY, loc);
   } catch {}
 }
+
+export const loadName = async () => { try { return await AsyncStorage.getItem("archerName"); } catch { return null; } };
+export const saveName = async (n) => { try { await AsyncStorage.setItem("archerName", n); } catch {} };

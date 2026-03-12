@@ -3,15 +3,18 @@ import {
   View, Text, TouchableOpacity, TextInput,
   ScrollView, StyleSheet,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { DIST_6, DIST_12, COLORS } from "../constants";
 import { ModeSlider, Sec, Card } from "../components/UI";
 import SessionRow from "../components/SessionRow";
 
-export default function HomeScreen({ sessions, location, onSetLocation, onStart, onOpenSession, onProgress, onDeleteSession }) {
+export default function HomeScreen({ sessions, location, onSetLocation, onStart, onOpenSession, onProgress, onDeleteSession, archerName, onSetName }) {
   const [endsCount, setEndsCount]     = useState(6);
   const [pendingDist, setPendingDist] = useState(null);
   const [sessionMode, setSessionMode] = useState("score");
   const [editingLoc, setEditingLoc]   = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput]     = useState("");
   const [locInput, setLocInput]       = useState(location);
   const [customDist, setCustomDist]   = useState("");
   const [editingCustom, setEditingCustom] = useState(false);
@@ -20,6 +23,7 @@ export default function HomeScreen({ sessions, location, onSetLocation, onStart,
   const recent = sessions.slice(-3).reverse();
 
   const handleSwitchEnds = (n) => {
+    Haptics.selectionAsync();
     setEndsCount(n);
     setPendingDist(null);
     setEditingCustom(false);
@@ -44,6 +48,7 @@ export default function HomeScreen({ sessions, location, onSetLocation, onStart,
 
   const handleStart = () => {
     if (!pendingDist) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onStart({ distance: pendingDist, endsCount, sessionMode });
     setPendingDist(null);
   };
@@ -57,10 +62,27 @@ export default function HomeScreen({ sessions, location, onSetLocation, onStart,
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.appLabel}>Archery Scorer</Text>
-          <Text style={styles.appTitle}>New session</Text>
-        </View>
+        <Text style={styles.appLabel}>Archery Scorer</Text>
+        {editingName ? (
+          <View style={styles.nameRow}>
+            <TextInput
+              autoFocus
+              value={nameInput}
+              onChangeText={setNameInput}
+              onSubmitEditing={() => { onSetName(nameInput.trim() || "Archer"); setEditingName(false); }}
+              placeholder="Your name"
+              style={styles.nameInput}
+              returnKeyType="done"
+            />
+            <TouchableOpacity onPress={() => { onSetName(nameInput.trim() || "Archer"); setEditingName(false); }} style={styles.nameDoneBtn}>
+              <Text style={styles.nameDoneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity onPress={() => { setNameInput(archerName); setEditingName(true); }}>
+            <Text style={styles.appTitle}>Hi, {archerName}! 🏹</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Location */}
@@ -72,7 +94,7 @@ export default function HomeScreen({ sessions, location, onSetLocation, onStart,
               value={locInput}
               onChangeText={setLocInput}
               onSubmitEditing={saveLoc}
-              placeholder="e.g. Yumenoshima Archery Range"
+              placeholder="e.g. Yumenoshima"
               style={styles.locInput}
               returnKeyType="done"
             />
@@ -164,10 +186,14 @@ export default function HomeScreen({ sessions, location, onSetLocation, onStart,
       {/* Recent sessions */}
       {recent.length > 0 && (
         <Sec label="Recent sessions">
-          {recent.map((s, i) => (
-            <SessionRow key={i} session={s} onPress={() => onOpenSession(s)} onDelete={() => onDeleteSession(realIndex)} />
-          ))}
-          <TouchableOpacity onPress={onProgress} style={styles.progressBtn}>
+          {recent.map((s, i) => {
+            const distPB = Math.max(...sessions.filter(x => x.distance === s.distance).map(x => x.total));
+            const isPB = s.total === distPB;
+            return (
+              <SessionRow key={i} session={s} isPB={isPB} onPress={() => onOpenSession(s)} onDelete={() => onDeleteSession(sessions.length - 1 - i)} />
+            );
+          })}
+          <TouchableOpacity onPress={() => { Haptics.selectionAsync(); onProgress(); }} style={styles.progressBtn}>
             <Text style={styles.progressBtnText}>View all progress →</Text>
           </TouchableOpacity>
         </Sec>
@@ -181,9 +207,9 @@ export default function HomeScreen({ sessions, location, onSetLocation, onStart,
 const styles = StyleSheet.create({
   scroll:   { flex: 1, backgroundColor: COLORS.bg },
   content:  { paddingBottom: 60 },
-  header:   { paddingHorizontal: 18, paddingTop: 56, paddingBottom: 16 },
+  header:   { paddingHorizontal: 18, paddingTop: 35, paddingBottom: 16 },
   appLabel: { fontSize: 11, fontWeight: "700", color: COLORS.accent, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 4 },
-  appTitle: { fontSize: 32, fontWeight: "900", color: COLORS.text, letterSpacing: -1.5 },
+  appTitle: { fontSize: 32, fontWeight: "900", color: COLORS.text, letterSpacing: -0.5, marginTop: 4 },
   locWrap:  { paddingHorizontal: 18, marginBottom: 4 },
   locRow:   { flexDirection: "row", gap: 8 },
   locInput: { flex: 1, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1.5, borderColor: "#d0deff", fontSize: 12, backgroundColor: "#fff" },
@@ -195,6 +221,11 @@ const styles = StyleSheet.create({
   locPillText:    { fontSize: 12, fontWeight: "600" },
   locPillTextSet: { color: COLORS.accent },
   locPillTextUnset: { color: COLORS.muted },
+
+  nameRow:      { flexDirection: "row", gap: 8, alignItems: "center", marginTop: 4 },
+  nameInput:    { flex: 1, fontSize: 28, fontWeight: "900", color: COLORS.text, borderBottomWidth: 2, borderBottomColor: COLORS.accent, paddingVertical: 2 },
+  nameDoneBtn:  { backgroundColor: COLORS.accent, borderRadius: 20, paddingVertical: 7, paddingHorizontal: 14 },
+  nameDoneText: { fontSize: 12, fontWeight: "700", color: "#fff" },
 
   endsToggle: { flexDirection: "row", backgroundColor: "#f0f0f0", borderRadius: 14, padding: 4, marginBottom: 14 },
   endsBtn:    { flex: 1, paddingVertical: 11, alignItems: "center", borderRadius: 11 },

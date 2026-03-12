@@ -2,6 +2,7 @@ import React from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { COLORS } from "../constants";
 
 // ── Card ─────────────────────────────────────────────────────────────────────
@@ -44,10 +45,10 @@ export function ModeSlider({ value, onChange }) {
   return (
     <View style={styles.sliderTrack}>
       <View style={[styles.sliderThumb, isSpan ? styles.sliderRight : styles.sliderLeft]} />
-      <TouchableOpacity style={styles.sliderHalf} onPress={() => onChange("score")} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.sliderHalf} onPress={() => { Haptics.selectionAsync(); onChange("score"); }} activeOpacity={0.7}>
         <Text style={[styles.sliderLabel, !isSpan && styles.sliderLabelActive]}>Score</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.sliderHalf} onPress={() => onChange("span")} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.sliderHalf} onPress={() => { Haptics.selectionAsync(); onChange("span"); }} activeOpacity={0.7}>
         <Text style={[styles.sliderLabel, isSpan && styles.sliderLabelActive]}>🎯 Span</Text>
       </TouchableOpacity>
     </View>
@@ -80,7 +81,7 @@ export function TabToggle({ value, onChange, options }) {
         {options.map(opt => (
           <TouchableOpacity
             key={opt.value}
-            onPress={() => onChange(opt.value)}
+            onPress={() => { Haptics.selectionAsync(); onChange(opt.value); }}
             activeOpacity={0.7}
             style={[styles.tabOption, value === opt.value && styles.tabOptionActive]}
           >
